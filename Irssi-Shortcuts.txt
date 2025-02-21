@@ -1,0 +1,3 @@
+Ctrl + X : switch between users in your status window.
+Ctrl + N : switch between tabs of the same user.
+Ctrl + P : switch between tabs of the same user.
