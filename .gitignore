@@ -1,2 +1,2 @@
 ircserv
-obj/
+obj/*.o
