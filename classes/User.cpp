@@ -2,9 +2,7 @@
 
 User::User(void)
 {
-    this->isAuthenticated = false;
-    this->isPassAuthenticated = false;
-    this->isNickAuthenticated = false;
+    this->isAuthFailed = false;
     this->isUserAuthenticated = false;
 }
 
