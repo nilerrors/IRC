@@ -23,8 +23,6 @@ bool checkInvalidCharacters (std::string message)
 std::string parseNickname(std::vector<User> users, std::string nickname)
 {
     int i = 0;
-    std::cout << nickname << std::endl;
-    
     while (i < users.size())
     {
         if (users[i].nickname.compare(nickname) == 0)
@@ -59,27 +57,14 @@ std::string trimAuth(std::string str)
     return str;
 }
 
-bool checkLastUserInfo (std::string input)
-{
-    int i = 0;
-    while (i < input.length())
-    {
-        if (input[i] == ' ')
-        {
-            return false;
-        }
-        i++;
-    }
-    return true;
-}
-
 //-------------------------------------HELPERS END-------------------------------------//
 
 void authenticateCAPLS(User &user)
 {
+    std::string capls = trim(user.auth[0]);
     if (user.auth.size() == 4)
     {
-        if (user.auth[0].compare("CAP LS\r\n") == 0)
+        if (capls.compare("CAP LS\r\n") == 0)
         {
             user.auth.erase(user.auth.begin());
             return ;
@@ -94,7 +79,8 @@ void authenticatePassword(Server &server, User &user)
     std::string pass = user.auth[0];
     if (pass.substr(0,5).compare("PASS ") == 0)
     {
-        if (pass.substr(5,pass.size() - 5 - 2).compare(server.getPassword()) == 0)
+        pass = trim(pass.substr(5,pass.length() - 2));
+        if (pass.compare(server.getPassword()) == 0)
                     return ;
     }
     user.isAuthFailed = true;
@@ -105,7 +91,8 @@ void authenticateNickname(std::vector<User> &users, User &user)
     std::string nickname = user.auth[1];
     if (nickname.substr(0,5).compare("NICK ") == 0)
     {
-        user.nickname = parseNickname(users, nickname.substr(5,nickname.size() - 5 - 2));
+        nickname = trim(nickname.substr(5,nickname.length() - 2));
+        user.nickname = parseNickname(users, nickname);
         if (user.nickname.compare("ThisNicknameIsNotValid") != 0)
             return;
     }
@@ -116,6 +103,7 @@ void authenticateUserInfo(std::vector<User> &users, User &user)
 {
     std::vector<std::string> a;
     std::string userInfo = user.auth[2];
+    int findIndex;
     int i = 0;
 
     if (userInfo.substr(0,5).compare("USER ") != 0)
@@ -125,25 +113,33 @@ void authenticateUserInfo(std::vector<User> &users, User &user)
     }
     userInfo = userInfo.substr(5);
     userInfo = userInfo.substr(0,userInfo.length() - 2); 
-    while (userInfo.empty() == false)
+    while (i < 3)
     {
-        a.push_back(userInfo.substr(0,userInfo.find(" ") + 1));
-        userInfo = userInfo.substr(userInfo.find(" ") + 1);
-        userInfo = trim (userInfo);
-        if (checkLastUserInfo(userInfo) == true)
+        findIndex = userInfo.find(" ");
+        if (findIndex == std::string::npos)
         {
             a.push_back(userInfo);
-            break;
+            userInfo.clear();
         }
+        a.push_back(userInfo.substr(0,findIndex + 1));
+        userInfo = userInfo.substr(findIndex + 1);
+        userInfo = trim (userInfo);
         i++;
     }
-    if (a.size() != 4 || a[3][0] != ':')
+    if (a.size() != 3 || userInfo.empty() == true)
+    {
+        user.isAuthFailed = true;
+        return ;
+    }
+    a.push_back(userInfo);
+    if (a[3][0] != ':')
     {
         user.isAuthFailed = true;
         return ;
     }
     return ;
 }
+
 
 bool authenticate(Server &server, std::vector<User> &users, User &user, std::string message)
 {
