@@ -7,6 +7,7 @@ bool parseArgs(char *argv[])
     std::string password = argv[2];
     int port;
 
+
     portStr = trim(portStr);
     password = trim(password);
     if (password.empty() == true || password.length() > 10)

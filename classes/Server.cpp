@@ -24,7 +24,6 @@ void Server::initializeSocket(std::string portStr, std::string password)
     if (listenResult == -1)
         throw Server::ServerSocketFail();
     initializePollFds();
-    this->clientAmount = 0;
     this->password = trim(password);
     std::cout << "Server initialization successful\n"; 
 }
@@ -37,15 +36,16 @@ void Server::connectToServer(std::vector<User> &users)
     int i = 1;
 
     client_socket = accept(this->serverSocket, (struct sockaddr *)&cliaddr, (socklen_t *)&addrlen);
+
     while (i < this->maxSize)
     {
         if (this->pollfds[i].fd == 0)
         {
             this->pollfds[i].fd = client_socket;
             this->pollfds[i].events = POLLIN | POLLPRI;
-            this->clientAmount++;
             User a = User();
             a.clienNumber = i;
+            a.socket = client_socket;
             users.push_back(a);
             std::cout << "User joined the server" << std::endl;
             return ;
@@ -61,118 +61,13 @@ void Server::connectToServer(std::vector<User> &users)
 
 void Server::disconnectClient(std::vector<User> &users, int index)
 {
-    std::cout << "i number to disconnect to server: " << index << std::endl;
     std::string quitMsg = "ERROR :Closing Link: localhost (Server disconnected)\r\n";
     send(this->pollfds[index].fd,quitMsg.c_str(),quitMsg.length(),0);
-    // close(this->pollfds[index].fd);
+    close(this->pollfds[index].fd);
     this->pollfds[index].fd = 0;
     this->pollfds[index].events = 0;
     this->pollfds[index].revents = 0;
-    this->clientAmount--;
-    std::cout << "index of disconnection vector: " << this->getIndexofUser(users,index)<< std::endl;
     users.erase(users.begin() + this->getIndexofUser(users,index));
-}
-
-void Server::authenticate(std::vector<User> &users, User &user, std::string message, int index)
-{
-    if (message.substr(0,8).compare("CAP LS\r\n") == 0 || user.authIrssi.size() != 0)
-    {
-        if (this->irssiAuthenticate(users, user, message) == true)
-        {
-            user.isAuthenticated = true;
-            std::string nickMsg = ":server NICK " + user.nickname + "\r\n";
-            std::string welcomeMsg = "001 " + user.nickname + " :Welcome to the Internet Relay Network " + user.nickname + "\r\n";
-            send(this->pollfds[index].fd, nickMsg.c_str(), nickMsg.length(), 0);
-            send(this->pollfds[index].fd,welcomeMsg.c_str(),welcomeMsg.length(),0);
-            user.authIrssi.clear();
-        }
-        else if (user.authIrssi.size() == 4 && user.isAuthenticated == false)
-        {
-
-            std::string quitMsg = "ERROR :Closing Link: localhost (Server disconnected)\r\n";
-            send(this->pollfds[index].fd,quitMsg.c_str(),quitMsg.length(),0);
-            this->disconnectClient(users,index);
-            user.authIrssi.clear();
-        }
-        return ;
-    }
-    else 
-    {
-        if (netcatAuthenticate(users, user, message) == false)
-        {
-            // std::string failMsg = "Something went during authentication (wrong password, invalid nickname, etc...)\r\n";
-            // send(this->pollfds[index].fd, failMsg.c_str(), failMsg.length(), 0);
-            return ;
-        }
-    }
-}
-
-bool Server::netcatAuthenticate(std::vector<User> &users, User &user, std::string message)
-{
-    if (message.length() <= 7 || checkInvalidCharacters(message) == false)
-    {
-        user.isPassAuthenticated = false;
-        user.isNickAuthenticated = false;
-        user.isUserAuthenticated = false;
-        return false;
-    }
-    message = trim (message);
-    std::string parameter = message.substr(0,5);
-    std::string messageParsed = message.substr(5);
-    // std::cout << parameter << "|" <<std::endl;
-    // std::cout << messageParsed << "|" << std::endl;
-    if (user.isPassAuthenticated == false)
-    {
-            // if (message.substr(0,5).compare("PASS ") == 0)
-            // {
-            //     if (a.substr(5,message.length() - 5 - 2).compare(this->password) == 0)
-            //     {
-            //         std::cout << "CORRECT PASSWORD\n" << std::endl;
-            //         user.isPassAuthenticated = true;
-            //         return (true);
-            //     }
-            //     else
-            //         return false;
-            // }
-            // return (false);
-        } 
-    return (false);
-}
-
-
-bool Server::irssiAuthenticate(std::vector<User> &users, User &user, std::string message)
-{
-    int i = 0;
-    std::string str;
-
-    while (message.empty() == false)
-    {
-        str = message.substr(0,message.find("\n") + 1);
-        str.erase(str.length() - 2);
-        user.authIrssi.push_back(str);
-        message = message.substr(message.find("\n") + 1);
-        if (checkLastIrssi(message) == true)
-        {
-            message.erase(message.length() - 2);
-            user.authIrssi.push_back(message);
-            break;
-        }
-    }
-    if (user.authIrssi.size() != 4)
-    {
-            std::cout << "not enough\n";
-            return (false);
-    }
-    if (user.authIrssi[1].substr(5).compare(this->password) != 0)
-    {
-            std::cout << "zrong password\n";
-            return (false);
-
-    }
-    user.nickname = parseNickname(users,user.authIrssi[2].substr(5));
-    if (user.nickname.compare("ThisNicknameIsNotValid") == 0)
-            return (false);
-    return (true);
 }
 
 void Server::checkPrivateMessage(std::vector<User> users, User user, std::string message)
@@ -180,6 +75,10 @@ void Server::checkPrivateMessage(std::vector<User> users, User user, std::string
     std::cout << message;
 }
 
+std::string Server::getPassword()
+{
+    return this->password;
+}
 //---------------------------------------HELPERS---------------------------------------//
 
 void Server::initializePollFds()
@@ -209,33 +108,22 @@ int Server::getIndexofUser(std::vector<User> users, int index)
     return (i);
 }
 
-std::string Server::parseNickname(std::vector<User> users, std::string nickname)
+int Server::getCurrentUsersToPoll() 
 {
-    int i = 0;
-    
-    while (i < this->clientAmount)
-    {
-        if (users[i].nickname.compare(nickname) == 0)
+    int i = 1;
+    int j = 1;
+        while (j < this->maxSize)
         {
-            nickname.push_back('_');
-            i = -1;
+            if (this->pollfds[j].fd != 0)
+            {
+                    i = j;
+            }
+            j++;
         }
-        i++;
-    }
-    if (nickname.length() > 20 || isalpha(nickname[0]) == false)
-        return ("ThisNicknameIsNotValid");
-    i = 0;
-    while (i < nickname.length())
-    {
-        if (isalnum(nickname[i]) == false && nickname[i] != '-' && nickname[i] != '_')
-            return ("ThisNicknameIsNotValid");
-        i++;
-    }
-    return (nickname);
+        return i;
 }
 
 //-------------------------------------HELPERS END-------------------------------------//
-
 
 
 //-------------------------------------EXCEPTIONS--------------------------------------//
@@ -251,9 +139,6 @@ const char* Server::PortOutofRange::what() const throw()
 }
 
 //-----------------------------------EXCEPTIONS END------------------------------------//
-
-
-
 
 bool Server::validateIncomingMessage (std::vector<User> &users, std::string &message, int index)
 {
@@ -273,19 +158,50 @@ bool Server::validateIncomingMessage (std::vector<User> &users, std::string &mes
     return (true);
 }
 
-
-bool Server::checkInvalidCharacters (std::string message)
+Server::~Server()
 {
-    int i = 0;
-    char c;
-    while (i < message.length() - 2)
-    {
-        c = message[i];
-        if (c == '\0' || c == '\r' || c == '\n') 
-            return false;
-        i++;
+}
+
+void Server::processClientMessage(User& user, const std::string& message, std::vector<User>& users) {
+    // Split the message into command and parameters
+    size_t spacePos = message.find(' ');
+    std::string command = message.substr(0, spacePos);
+    std::string parameters = (spacePos == std::string::npos) ? "" : message.substr(spacePos + 1);
+    
+    // Handle the JOIN command
+    if (command == "JOIN") {
+        handleJoinCommand(&user, parameters);
     }
-    return (true);
-    // if (!isalnum(c) && !isValidSpecialChar(c) && c != ':' && c != '#' && c != '&' && c != '-' && c != '.') 
-    //     return false;
+    else if (command == "PRIVMSG") {
+        handlePrivmsgCommand(&user, parameters, users);
+    }
+    else if (command == "PART") {
+        handlePartCommand(&user, parameters);
+    }
+    else if (command == "QUIT") {
+        handleQuitCommand(&user, parameters, users);
+    }
+    else if (command == "KICK") {
+        handleKickCommand(&user, parameters, users);
+    }
+    else if (command == "MODE") {
+        handleModeCommand(&user, parameters, users);
+    }
+    else if (command == "INVITE") {
+        size_t spacePos2 = parameters.find(' ');
+        if (spacePos2 == std::string::npos) {
+            std::string errorMsg = "461 " + user.nickname + " INVITE :Not enough parameters\r\n";
+            send(user.socket, errorMsg.c_str(), errorMsg.length(), 0);
+            return;
+        }
+        std::string targetNick = parameters.substr(0, spacePos2);
+        std::string channelName = parameters.substr(spacePos2 + 1);
+        handleInviteCommand(&user, parameters, users);
+    }
+    // Handle unknown commands
+/*     else {
+        std::string errorMsg = "ERROR :Unknown command: " + command + "\r\n";
+        send(user.socket, errorMsg.c_str(), errorMsg.length(), 0);
+        std::cerr << "Unknown command from client: " << command << std::endl;
+    } */
 }
