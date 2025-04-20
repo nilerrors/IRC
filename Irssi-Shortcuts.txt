@@ -1,3 +1,9 @@
 Ctrl + X : switch between users in your status window.
 Ctrl + N : switch between tabs of the same user.
 Ctrl + P : switch between tabs of the same user.
+/connect 127.0.0.1 6667 abc123
+
+CAP LS
+PASS abc123
+NICK pc
+USER pc pc 127.0.0.1 :pc

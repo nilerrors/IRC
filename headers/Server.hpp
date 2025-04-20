@@ -1,20 +1,11 @@
 #ifndef SERVER_H
 # define SERVER_H
-#include <string>
 #include <iostream>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <stdio.h>
-#include <netdb.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <string.h>
-#include <sys/time.h>
 #include <poll.h>
-# include <time.h>
-# include <sys/time.h>
-#include <string.h>
-#include <vector>
 #include "Utility.hpp"
 #include "Channel.hpp"
 #include "User.hpp"
@@ -35,11 +26,9 @@ class Server
     public:
     ~Server();
     static const int maxSize = 11;
-    int clientAmount;
     int serverSocket;
     struct pollfd pollfds[10 + 1];
 
-    
     void connectToServer(std::vector<User> &users);
     void disconnectClient(std::vector<User> &users, int index);
 
