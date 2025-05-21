@@ -61,7 +61,7 @@ std::string trimAuth(std::string str)
 
 void authenticateCAPLS(User &user)
 {
-    std::string capls = trim(user.auth[0]);
+    std::string capls = trimAuth(user.auth[0]);
     if (user.auth.size() == 4)
     {
         if (capls.compare("CAP LS\r\n") == 0)

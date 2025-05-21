@@ -24,8 +24,6 @@ void Server::handleModeCommand(User* user, const std::string& parameters, std::v
     }
 
     // Debug print
-    std::cout << "[DEBUG] Parsed MODE command - Channel: '" << channelName
-              << "', Mode: '" << mode << "', Argument: '" << argument << "'\n";
 
     if (channelName.empty() || mode.empty()) {
         std::string errorMsg = "461 " + user->nickname + " MODE :Not enough parameters\r\n";

@@ -59,14 +59,37 @@ void Server::connectToServer(std::vector<User> &users)
     return ;
 }
 
+bool Channel::isEmpty() const {
+    return this->getUsers().empty() && this->getInvitedUsers().empty();
+}
+
 void Server::disconnectClient(std::vector<User> &users, int index)
 {
+    int userIndex = this->getIndexofUser(users, index);
+    User& user = users[userIndex];
+
     std::string quitMsg = "ERROR :Closing Link: localhost (Server disconnected)\r\n";
     send(this->pollfds[index].fd,quitMsg.c_str(),quitMsg.length(),0);
     close(this->pollfds[index].fd);
     this->pollfds[index].fd = 0;
     this->pollfds[index].events = 0;
     this->pollfds[index].revents = 0;
+
+    std::map<std::string, Channel*>::iterator it = this->channels.begin();
+    while (it != this->channels.end()) {
+        Channel* chan = it->second;
+        if (chan->hasUser(&user)) { // you need to implement this check
+            chan->removeUser(&user); // removes the user
+        }
+        if (chan->isEmpty()) {
+            std::map<std::string, Channel*>::iterator toErase = it;
+            ++it;
+            delete chan; // free the memory if dynamically allocated
+            this->channels.erase(toErase);
+        } else {
+            ++it;
+        }
+    }
     users.erase(users.begin() + this->getIndexofUser(users,index));
 }
 
@@ -177,9 +200,6 @@ void Server::processClientMessage(User& user, const std::string& message, std::v
     }
     else if (command == "PART") {
         handlePartCommand(&user, parameters);
-    }
-    else if (command == "QUIT") {
-        handleQuitCommand(&user, parameters, users);
     }
     else if (command == "KICK") {
         handleKickCommand(&user, parameters, users);

@@ -55,7 +55,6 @@ class Server
 
     void handleJoinCommand(User* user, const std::string& channelName);
     void handlePartCommand(User* user, const std::string& channelName);
-    void handleQuitCommand(User* user, const std::string& reason, std::vector<User>& users);
     void handlePrivmsgCommand(User* user, const std::string& parameters, std::vector<User>& users);
     void handleKickCommand(User* user, const std::string& parameters, std::vector<User>& users);
     void handleModeCommand(User* user, const std::string& parameters, std::vector<User>& users);

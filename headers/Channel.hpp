@@ -27,7 +27,7 @@ public:
 
     void addUser(User* user);
     void removeUser(User* user);
-    bool hasUser(User* user);
+    bool hasUser(User *user);
     void addOperator(User* user);
     void removeOperator(User* user);
     void inviteUser(User* user);
@@ -47,6 +47,7 @@ public:
     bool isPasswordCorrect(const std::string& password) const;
     bool isPasswordProtected() const;
     bool isFull() const;
+    bool isEmpty() const;
     bool isInviteOnly() const;
     std::string getName() const;
     std::string getTopic() const;

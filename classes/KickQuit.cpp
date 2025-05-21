@@ -27,50 +27,6 @@ std::string Server::trim(const std::string& str) {
     return str.substr(first, last - first + 1);
 }
 
-void Server::handleQuitCommand(User* user, const std::string& reason, std::vector<User>& users) {
-    if (!user) {
-        std::cerr << "Error: Invalid user pointer in handleQuitCommand." << std::endl;
-        return;
-    }
-    std::cout << "test1" << std::endl;
-    std::vector<Channel*> userChannels = getUserChannels(user);
-    for (size_t i = 0; i < userChannels.size(); ++i) {
-        Channel* channel = userChannels[i];
-        std::string quitMsg = ":" + user->nickname + " QUIT :" + reason + "\r\n";
-        std::vector<User*> usersInChannel = channel->getUsers();
-        for (size_t j = 0; j < usersInChannel.size(); ++j) {
-            if (usersInChannel[j] != user) {
-                send(usersInChannel[j]->socket, quitMsg.c_str(), quitMsg.length(), 0);
-            }
-        }
-        channel->removeUser(user);
-        if (channel->getUsers().empty() && channel->getInvitedUsers().empty()) {
-            delete channel;
-            channels.erase(channel->getName());
-        }
-    }
-    std::cout << "test2" << std::endl;
-    close(user->socket);
-    int i = 1;
-    for (std::vector<User>::iterator it = users.begin(); it != users.end(); ++it) {
-        std::cout << "User: " << i << " " << user->nickname << std::endl;
-        i++;
-    }
-    for (std::vector<User>::iterator it = users.begin(); it != users.end(); ++it) {
-        if (&(*it) == user) {
-            users.erase(it);
-            break;
-        }
-    }
-    i = 1;
-    for (std::vector<User>::iterator it = users.begin(); it != users.end(); ++it) {
-        std::cout << "After user: " << i << " " << user->nickname << std::endl;
-        i++;
-    }
-    std::cout << "test3" << std::endl;
-    std::cout << user->nickname << " has quit: " << reason << std::endl;
-}
-
 void Server::handleKickCommand(User* user, const std::string& parameters, std::vector<User>& users) {
     if (!user) {
         std::cerr << "Error: Invalid user pointer in handleKickCommand." << std::endl;
